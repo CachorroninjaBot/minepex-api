@@ -255,6 +255,34 @@ app.get('/api/pix/status/:purchaseId', (req, res) => {
     });
 });
 
+// ─── API: Pending Purchases (for Minecraft plugin polling) ──────────────────
+app.get('/api/pending', (req, res) => {
+    const pixPending = queryAll(storeDb, "SELECT * FROM purchases WHERE status = 'paid' ORDER BY created_at ASC LIMIT 10");
+    const mcPending = queryAll(storeDb, "SELECT * FROM mobcoins_purchases WHERE status = 'pending' ORDER BY created_at ASC LIMIT 10");
+
+    const pending = [
+        ...pixPending.map(p => ({ type: 'pix', ...p })),
+        ...mcPending.map(p => ({ type: 'mobcoins', ...p }))
+    ];
+
+    res.json({ pending, count: pending.length });
+});
+
+// ─── API: Mark as Delivered ─────────────────────────────────────────────────
+app.post('/api/delivered/:purchaseId', (req, res) => {
+    const { purchaseId } = req.params;
+    const { type } = req.body;
+
+    if (type === 'mobcoins') {
+        storeDb.run(`UPDATE mobcoins_purchases SET status = 'delivered', delivered_at = CAST(strftime('%s','now') AS INTEGER) WHERE id = ?`, [purchaseId]);
+    } else {
+        storeDb.run(`UPDATE purchases SET status = 'delivered', delivered_at = CAST(strftime('%s','now') AS INTEGER) WHERE id = ?`, [purchaseId]);
+    }
+    saveDb();
+
+    res.json({ status: 'delivered' });
+});
+
 // ─── API: Confirm PIX ───────────────────────────────────────────────────────
 app.post('/api/pix/confirm/:purchaseId', (req, res) => {
     const { purchaseId } = req.params;

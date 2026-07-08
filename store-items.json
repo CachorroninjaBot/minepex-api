@@ -55,47 +55,47 @@
       "badge": "Exclusivo",
       "badgeColor": "#ff69b4"
     },
-    "mobcoins_1000": {
-      "name": "1.000 MobCoins",
+    "mobcoins_2000": {
+      "name": "2.000 MobCoins",
       "price": 5.00,
       "originalPrice": null,
-      "command": "mobcoins add %player% 1000",
+      "command": "mobcoins add %player% 2000",
       "icon": "🪙",
       "duration": null,
-      "features": ["Moeda do servidor", "Use na loja de MobCoins"],
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Bônus de boas-vindas!"],
       "badge": "Oferta",
       "badgeColor": "#ff4444"
     },
-    "mobcoins_5000": {
-      "name": "5.000 MobCoins",
-      "price": 20.00,
-      "originalPrice": 25.00,
-      "command": "mobcoins add %player% 5000",
-      "icon": "🪙",
-      "duration": null,
-      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 5!"],
-      "badge": "Mais Vendido",
-      "badgeColor": "#00ff88"
-    },
     "mobcoins_10000": {
       "name": "10.000 MobCoins",
-      "price": 35.00,
-      "originalPrice": 50.00,
+      "price": 20.00,
+      "originalPrice": 30.00,
       "command": "mobcoins add %player% 10000",
       "icon": "🪙",
       "duration": null,
-      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 15!"],
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 10!"],
+      "badge": "Mais Vendido",
+      "badgeColor": "#00ff88"
+    },
+    "mobcoins_25000": {
+      "name": "25.000 MobCoins",
+      "price": 35.00,
+      "originalPrice": 55.00,
+      "command": "mobcoins add %player% 25000",
+      "icon": "🪙",
+      "duration": null,
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 20!", "Bônus extra"],
       "badge": "Melhor Oferta",
       "badgeColor": "#ffd700"
     },
-    "mobcoins_50000": {
-      "name": "50.000 MobCoins",
+    "mobcoins_100000": {
+      "name": "100.000 MobCoins",
       "price": 120.00,
-      "originalPrice": 250.00,
-      "command": "mobcoins add %player% 50000",
+      "originalPrice": 200.00,
+      "command": "mobcoins add %player% 100000",
       "icon": "🪙",
       "duration": null,
-      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 130!", "Bônus exclusivo"],
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 80!", "Bônus exclusivo VIP"],
       "badge": "🔥 MEGA OFERTA",
       "badgeColor": "#ff4444"
     }

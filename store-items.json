@@ -1,0 +1,205 @@
+{
+  "pix": {
+    "vip": {
+      "name": "Rank VIP",
+      "price": 15.00,
+      "originalPrice": 25.00,
+      "command": "lp user %player% parent addtemp vip 30d",
+      "icon": "⭐",
+      "duration": "30 dias",
+      "features": ["Prefixo [VIP] colorido", "Kit VIP semanal", "Comandos exclusivos"],
+      "badge": "Mais Vendido",
+      "badgeColor": "#00ff88"
+    },
+    "elite": {
+      "name": "Rank Elite",
+      "price": 35.00,
+      "originalPrice": 50.00,
+      "command": "lp user %player% parent addtemp elite 30d",
+      "icon": "💎",
+      "duration": "30 dias",
+      "features": ["Tudo do VIP", "Kit Elite semanal", "Voo em sobrevivência"],
+      "badge": "Popular",
+      "badgeColor": "#00d4ff"
+    },
+    "ultra": {
+      "name": "Rank Ultra",
+      "price": 60.00,
+      "originalPrice": 90.00,
+      "command": "lp user %player% parent addtemp ultra 30d",
+      "icon": "👑",
+      "duration": "30 dias",
+      "features": ["Tudo do Elite", "Kit Ultra diário", "Regiões exclusivas"],
+      "badge": "Melhor Custo-Benefício",
+      "badgeColor": "#ffd700"
+    },
+    "media": {
+      "name": "Rank Mídia",
+      "price": 100.00,
+      "originalPrice": 150.00,
+      "command": "lp user %player% parent addtemp media 30d",
+      "icon": "🎬",
+      "duration": "30 dias",
+      "features": ["Tag [Mídia] no chat", "Kit exclusivo de Mídia", "Para criadores de conteúdo"],
+      "badge": null,
+      "badgeColor": null
+    },
+    "famous": {
+      "name": "Rank Famoso",
+      "price": 150.00,
+      "originalPrice": 250.00,
+      "command": "lp user %player% parent addtemp famous 30d",
+      "icon": "🌟",
+      "duration": "30 dias",
+      "features": ["Tudo do Ultra", "Tag [Famoso] dourada", "Kit Famoso premium diário", "Acesso antecipado"],
+      "badge": "Exclusivo",
+      "badgeColor": "#ff69b4"
+    },
+    "mobcoins_1000": {
+      "name": "1.000 MobCoins",
+      "price": 5.00,
+      "originalPrice": null,
+      "command": "mobcoins add %player% 1000",
+      "icon": "🪙",
+      "duration": null,
+      "features": ["Moeda do servidor", "Use na loja de MobCoins"],
+      "badge": "Oferta",
+      "badgeColor": "#ff4444"
+    },
+    "mobcoins_5000": {
+      "name": "5.000 MobCoins",
+      "price": 20.00,
+      "originalPrice": 25.00,
+      "command": "mobcoins add %player% 5000",
+      "icon": "🪙",
+      "duration": null,
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 5!"],
+      "badge": "Mais Vendido",
+      "badgeColor": "#00ff88"
+    },
+    "mobcoins_10000": {
+      "name": "10.000 MobCoins",
+      "price": 35.00,
+      "originalPrice": 50.00,
+      "command": "mobcoins add %player% 10000",
+      "icon": "🪙",
+      "duration": null,
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 15!"],
+      "badge": "Melhor Oferta",
+      "badgeColor": "#ffd700"
+    },
+    "mobcoins_50000": {
+      "name": "50.000 MobCoins",
+      "price": 120.00,
+      "originalPrice": 250.00,
+      "command": "mobcoins add %player% 50000",
+      "icon": "🪙",
+      "duration": null,
+      "features": ["Moeda do servidor", "Use na loja de MobCoins", "Economize R$ 130!", "Bônus exclusivo"],
+      "badge": "🔥 MEGA OFERTA",
+      "badgeColor": "#ff4444"
+    }
+  },
+  "mobcoins": {
+    "nether_star": {
+      "name": "Estrela do Nether",
+      "cost": 50000,
+      "command": "give %player% nether_star 1",
+      "icon": "⭐",
+      "desc": "Item raro do Nether"
+    },
+    "heavy_core": {
+      "name": "Núcleo Pesado",
+      "cost": 100000,
+      "command": "give %player% heavy_core 1",
+      "icon": "📦",
+      "desc": "Componente valioso"
+    },
+    "totem": {
+      "name": "Totem da Imortalidade",
+      "cost": 50000,
+      "command": "give %player% totem_of_undying 1",
+      "icon": "🛡️",
+      "desc": "Proteção contra a morte"
+    },
+    "elytra": {
+      "name": "Elytra",
+      "cost": 5000,
+      "command": "give %player% elytra 1",
+      "icon": "🦋",
+      "desc": "Voos pelos céus"
+    },
+    "trident": {
+      "name": "Tridente",
+      "cost": 10000,
+      "command": "give %player% trident 1",
+      "icon": "🔱",
+      "desc": "Arma poderosa"
+    },
+    "enchanted_apple": {
+      "name": "Maçã Dourada Encantada",
+      "cost": 40000,
+      "command": "give %player% enchanted_golden_apple 1",
+      "icon": "🍎",
+      "desc": "Regeneração suprema"
+    },
+    "lucky_card": {
+      "name": "Carta da Sorte",
+      "cost": 600,
+      "command": "givetokens %player% 1 lucky",
+      "icon": "🍀",
+      "desc": "Gire a roda da fortuna"
+    },
+    "super_stick": {
+      "name": "Bastão Super (64)",
+      "cost": 12000,
+      "command": "mm i give %player% super_stick 64",
+      "icon": "💡",
+      "desc": "64 bastões encantados"
+    },
+    "flare": {
+      "name": "Sinalizador de Comboio",
+      "cost": 8000,
+      "command": "envoy flare default %player% 1",
+      "icon": "🎆",
+      "desc": "Sinal especial"
+    },
+    "vip_30d": {
+      "name": "Rank VIP (30 dias)",
+      "cost": 50000,
+      "command": "lp user %player% parent addtemp vip 30d",
+      "icon": "⭐",
+      "desc": "Rank VIP por 30 dias",
+      "badge": "Popular",
+      "badgeColor": "#00ff88"
+    },
+    "elite_30d": {
+      "name": "Rank Elite (30 dias)",
+      "cost": 100000,
+      "command": "lp user %player% parent addtemp elite 30d",
+      "icon": "💎",
+      "desc": "Rank Elite por 30 dias"
+    },
+    "ultra_30d": {
+      "name": "Rank Ultra (30 dias)",
+      "cost": 150000,
+      "command": "lp user %player% parent addtemp ultra 30d",
+      "icon": "👑",
+      "desc": "Rank Ultra por 30 dias"
+    },
+    "media_30d": {
+      "name": "Rank Mídia (30 dias)",
+      "cost": 200000,
+      "command": "lp user %player% parent addtemp media 30d",
+      "icon": "🎬",
+      "desc": "Rank Mídia por 30 dias"
+    },
+    "famous_30d": {
+      "name": "Rank Famoso (30 dias)",
+      "cost": 250000,
+      "command": "lp user %player% parent addtemp famous 30d",
+      "icon": "🌟",
+      "desc": "Rank Famoso por 30 dias"
+    }
+  }
+}

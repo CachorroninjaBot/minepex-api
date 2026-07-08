@@ -101,32 +101,22 @@ function queryOne(db, sql, params = []) {
     return rows.length > 0 ? rows[0] : null;
 }
 
-// ─── Store Items ────────────────────────────────────────────────────────────
-const STORE_ITEMS = {
-    pix: {
-        'vip':    { name: 'Rank VIP',    price: 15.00,  command: 'lp user %player% parent addtemp vip 30d' },
-        'elite':  { name: 'Rank ELITE',  price: 35.00,  command: 'lp user %player% parent addtemp elite 30d' },
-        'ultra':  { name: 'Rank ULTRA',  price: 60.00,  command: 'lp user %player% parent addtemp ultra 30d' },
-        'media':  { name: 'Rank MÍDIA',  price: 100.00, command: 'lp user %player% parent addtemp media 30d' },
-        'famous': { name: 'Rank FAMOSO', price: 150.00, command: 'lp user %player% parent addtemp famous 30d' },
-    },
-    mobcoins: {
-        'nether_star':     { name: 'Estrela do Nether',            cost: 50000,  command: 'give %player% nether_star 1' },
-        'heavy_core':      { name: 'Núcleo Pesado',                cost: 100000, command: 'give %player% heavy_core 1' },
-        'totem':           { name: 'Totem da Imortalidade',        cost: 50000,  command: 'give %player% totem_of_undying 1' },
-        'elytra':          { name: 'Elytra',                       cost: 5000,   command: 'give %player% elytra 1' },
-        'trident':         { name: 'Tridente',                     cost: 10000,  command: 'give %player% trident 1' },
-        'enchanted_apple': { name: 'Maçã Dourada Encantada',       cost: 40000,  command: 'give %player% enchanted_golden_apple 1' },
-        'lucky_card':      { name: 'Carta da Sorte',               cost: 600,    command: 'givetokens %player% 1 lucky' },
-        'super_stick':     { name: 'Bastão Super (64)',             cost: 12000,  command: 'mm i give %player% super_stick 64' },
-        'flare':           { name: 'Sinalizador de Comboio',       cost: 8000,   command: 'envoy flare default %player% 1' },
-        'vip_30d':         { name: 'VIP (30 dias)',                cost: 50000,  command: 'lp user %player% parent addtemp vip 30d' },
-        'elite_30d':       { name: 'ELITE (30 dias)',              cost: 100000, command: 'lp user %player% parent addtemp elite 30d' },
-        'ultra_30d':       { name: 'ULTRA (30 dias)',              cost: 150000, command: 'lp user %player% parent addtemp ultra 30d' },
-        'media_30d':       { name: 'MÍDIA (30 dias)',              cost: 200000, command: 'lp user %player% parent addtemp media 30d' },
-        'famous_30d':      { name: 'FAMOSO (30 dias)',             cost: 250000, command: 'lp user %player% parent addtemp famous 30d' },
+// ─── Store Items (loaded from config) ──────────────────────────────────────
+const STORE_ITEMS_PATH = path.join(__dirname, 'store-items.json');
+let STORE_ITEMS = { pix: {}, mobcoins: {} };
+
+function loadStoreItems() {
+    try {
+        if (fs.existsSync(STORE_ITEMS_PATH)) {
+            STORE_ITEMS = JSON.parse(fs.readFileSync(STORE_ITEMS_PATH, 'utf-8'));
+            console.log(`[Store] Loaded ${Object.keys(STORE_ITEMS.pix).length} Pix items and ${Object.keys(STORE_ITEMS.mobcoins).length} MobCoins items`);
+        }
+    } catch (e) {
+        console.error('[Store] Error loading items:', e.message);
     }
-};
+}
+
+loadStoreItems();
 
 // ─── PIX Payload Generator ──────────────────────────────────────────────────
 function generatePixPayload(amount, txid, description) {
@@ -176,8 +166,14 @@ app.use((req, res, next) => {
     next();
 });
 
-// ─── API: Store Items ───────────────────────────────────────────────────────
+// ─── API: Store Items (with full config for frontend) ──────────────────────
 app.get('/api/store/items', (req, res) => res.json(STORE_ITEMS));
+
+// ─── API: Reload Store Config ──────────────────────────────────────────────
+app.post('/api/store/reload', (req, res) => {
+    loadStoreItems();
+    res.json({ message: 'Config recarregada', pix: Object.keys(STORE_ITEMS.pix).length, mobcoins: Object.keys(STORE_ITEMS.mobcoins).length });
+});
 
 // ─── API: Server Status ─────────────────────────────────────────────────────
 app.get('/api/haiz/status', async (req, res) => {

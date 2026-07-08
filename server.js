@@ -165,6 +165,7 @@ function crc16CCITT(str) {
 
 // ─── Express App ────────────────────────────────────────────────────────────
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors({ origin: [ALLOWED_ORIGIN], methods: ['GET', 'POST'], credentials: false }));
 app.use(express.json());
 

@@ -3,7 +3,7 @@
     "vip": {
       "name": "Rank VIP",
       "price": 15.00,
-      "originalPrice": 25.00,
+      "originalPrice": 20.00,
       "command": "lp user %player% parent addtemp vip 30d",
       "icon": "⭐",
       "duration": "30 dias",
@@ -13,8 +13,8 @@
     },
     "elite": {
       "name": "Rank Elite",
-      "price": 35.00,
-      "originalPrice": 50.00,
+      "price": 20.00,
+      "originalPrice": 30.00,
       "command": "lp user %player% parent addtemp elite 30d",
       "icon": "💎",
       "duration": "30 dias",
@@ -24,8 +24,8 @@
     },
     "ultra": {
       "name": "Rank Ultra",
-      "price": 60.00,
-      "originalPrice": 90.00,
+      "price": 25.00,
+      "originalPrice": 40.00,
       "command": "lp user %player% parent addtemp ultra 30d",
       "icon": "👑",
       "duration": "30 dias",
@@ -35,8 +35,8 @@
     },
     "media": {
       "name": "Rank Mídia",
-      "price": 100.00,
-      "originalPrice": 150.00,
+      "price": 35.00,
+      "originalPrice": 50.00,
       "command": "lp user %player% parent addtemp media 30d",
       "icon": "🎬",
       "duration": "30 dias",
@@ -46,8 +46,8 @@
     },
     "famous": {
       "name": "Rank Famoso",
-      "price": 150.00,
-      "originalPrice": 250.00,
+      "price": 45.00,
+      "originalPrice": 60.00,
       "command": "lp user %player% parent addtemp famous 30d",
       "icon": "🌟",
       "duration": "30 dias",

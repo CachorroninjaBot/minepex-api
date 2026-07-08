@@ -194,13 +194,16 @@ app.get('/api/haiz/status', async (req, res) => {
 // ─── API: Create PIX Payment ────────────────────────────────────────────────
 app.post('/api/pix/create', purchaseLimiter, async (req, res) => {
     const { playerName, itemId } = req.body;
+    console.log(`[PIX] Nova compra: player=${playerName}, item=${itemId}`);
 
     if (!playerName || !itemId) {
+        console.log('[PIX] ERRO: Nome do jogador e item são obrigatórios');
         return res.status(400).json({ error: 'Nome do jogador e item são obrigatórios' });
     }
 
     const item = STORE_ITEMS.pix[itemId];
     if (!item) {
+        console.log(`[PIX] ERRO: Item não encontrado: ${itemId}`);
         return res.status(404).json({ error: 'Item não encontrado' });
     }
 
@@ -213,6 +216,7 @@ app.post('/api/pix/create', purchaseLimiter, async (req, res) => {
         [purchaseId, playerName, itemId, item.name, item.price, txid]
     );
     saveDb();
+    console.log(`[PIX] Compra criada: id=${purchaseId}, item=${item.name}, price=${item.price}`);
 
     let qrCodeDataUrl = null;
     try {
@@ -261,6 +265,11 @@ app.get('/api/pending', (req, res) => {
         ...mcPending.map(p => ({ type: 'mobcoins', ...p }))
     ];
 
+    if (pending.length > 0) {
+        console.log(`[PENDING] ${pending.length} compras pendentes encontradas`);
+        pending.forEach(p => console.log(`  - ${p.type}: ${p.item_name} para ${p.player_name}`));
+    }
+
     res.json({ pending, count: pending.length });
 });
 
@@ -268,6 +277,7 @@ app.get('/api/pending', (req, res) => {
 app.post('/api/delivered/:purchaseId', (req, res) => {
     const { purchaseId } = req.params;
     const { type } = req.body;
+    console.log(`[DELIVERED] Marcando como entregue: id=${purchaseId}, type=${type}`);
 
     if (type === 'mobcoins') {
         storeDb.run(`UPDATE mobcoins_purchases SET status = 'delivered', delivered_at = CAST(strftime('%s','now') AS INTEGER) WHERE id = ?`, [purchaseId]);
@@ -282,15 +292,20 @@ app.post('/api/delivered/:purchaseId', (req, res) => {
 // ─── API: Confirm PIX ───────────────────────────────────────────────────────
 app.post('/api/pix/confirm/:purchaseId', (req, res) => {
     const { purchaseId } = req.params;
+    console.log(`[CONFIRM] Confirmando pagamento: id=${purchaseId}`);
     const purchase = queryOne(storeDb, 'SELECT * FROM purchases WHERE id = ?', [purchaseId]);
 
     if (!purchase) {
+        console.log(`[CONFIRM] ERRO: Compra não encontrada: ${purchaseId}`);
         return res.status(404).json({ error: 'Compra não encontrada' });
     }
 
     if (purchase.status !== 'pending') {
+        console.log(`[CONFIRM] Pagamento já processado: ${purchaseId}, status=${purchase.status}`);
         return res.json({ status: purchase.status, message: 'Pagamento já processado' });
     }
+
+    console.log(`[CONFIRM] Pagamento confirmado: ${purchase.item_name} para ${purchase.player_name}`);
 
     storeDb.run(`UPDATE purchases SET status = 'paid', paid_at = CAST(strftime('%s','now') AS INTEGER) WHERE id = ?`, [purchaseId]);
     saveDb();

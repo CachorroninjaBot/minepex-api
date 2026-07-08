@@ -344,6 +344,17 @@ app.get('/api/purchases/:playerName', (req, res) => {
     res.json({ pix, mobcoins });
 });
 
+// ─── API: Admin - All Purchases ─────────────────────────────────────────────
+app.get('/api/admin/purchases', (req, res) => {
+    const pixPurchases = queryAll(storeDb, 'SELECT *, \'pix\' as type FROM purchases ORDER BY created_at DESC LIMIT 100');
+    const mcPurchases = queryAll(storeDb, 'SELECT *, \'mobcoins\' as type FROM mobcoins_purchases ORDER BY created_at DESC LIMIT 100');
+
+    const allPurchases = [...pixPurchases, ...mcPurchases]
+        .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+    res.json({ purchases: allPurchases, count: allPurchases.length });
+});
+
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 

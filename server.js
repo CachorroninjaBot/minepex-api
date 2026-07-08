@@ -273,6 +273,14 @@ app.post('/api/pix/confirm/:purchaseId', (req, res) => {
     res.json({ status: 'paid', message: 'Pagamento confirmado!' });
 });
 
+// ─── API: MobCoins Balance ──────────────────────────────────────────────────
+app.get('/api/mobcoins/:playerName', (req, res) => {
+    const { playerName } = req.params;
+    // MobCoins balance is managed by the Minecraft plugin (IridiumMobCoins)
+    // Return 0 by default - the frontend handles this gracefully
+    res.json({ player: playerName, balance: 0, message: 'Saldo gerenciado pelo servidor' });
+});
+
 // ─── API: Buy with MobCoins ─────────────────────────────────────────────────
 app.post('/api/mobcoins/buy', purchaseLimiter, (req, res) => {
     const { playerName, itemId } = req.body;

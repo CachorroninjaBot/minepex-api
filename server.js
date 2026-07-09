@@ -313,12 +313,60 @@ app.post('/api/pix/confirm/:purchaseId', (req, res) => {
     res.json({ status: 'paid', message: 'Pagamento confirmado!' });
 });
 
-// ─── API: MobCoins Balance ──────────────────────────────────────────────────
-app.get('/api/mobcoins/:playerName', (req, res) => {
+// ─── API: Cancel Purchase ──────────────────────────────────────────────────
+app.post('/api/cancel/:purchaseId', (req, res) => {
+    const { purchaseId } = req.params;
+    const { type, reason } = req.body;
+    console.log(`[CANCEL] Cancelando compra: id=${purchaseId}, type=${type}, reason=${reason}`);
+
+    if (type === 'mobcoins') {
+        const purchase = queryOne(storeDb, 'SELECT * FROM mobcoins_purchases WHERE id = ?', [purchaseId]);
+        if (!purchase) {
+            return res.status(404).json({ error: 'Compra não encontrada' });
+        }
+        if (purchase.status === 'delivered') {
+            return res.status(400).json({ error: 'Não é possível cancelar uma compra já entregue' });
+        }
+        storeDb.run(`UPDATE mobcoins_purchases SET status = 'cancelled' WHERE id = ?`, [purchaseId]);
+    } else {
+        const purchase = queryOne(storeDb, 'SELECT * FROM purchases WHERE id = ?', [purchaseId]);
+        if (!purchase) {
+            return res.status(404).json({ error: 'Compra não encontrada' });
+        }
+        if (purchase.status === 'delivered') {
+            return res.status(400).json({ error: 'Não é possível cancelar uma compra já entregue' });
+        }
+        storeDb.run(`UPDATE purchases SET status = 'cancelled' WHERE id = ?`, [purchaseId]);
+    }
+    saveDb();
+
+    console.log(`[CANCEL] Compra cancelada: ${purchaseId}`);
+    res.json({ status: 'cancelled', message: 'Compra cancelada com sucesso' });
+});
+
+// ─── API: MobCoins Balance (proxy to plugin) ────────────────────────────────
+app.get('/api/mobcoins/:playerName', async (req, res) => {
     const { playerName } = req.params;
-    // MobCoins balance is managed by the Minecraft plugin (IridiumMobCoins)
-    // Return 0 by default - the frontend handles this gracefully
-    res.json({ player: playerName, balance: 0, message: 'Saldo gerenciado pelo servidor' });
+    const pluginUrl = process.env.PLUGIN_API_URL || 'http://minepex.minehost.com.br:8081';
+
+    try {
+        const response = await fetch(`${pluginUrl}/api/mobcoins/${encodeURIComponent(playerName)}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log(`[MOBCOINS] Saldo de ${playerName}: ${data.balance}`);
+            return res.json(data);
+        }
+    } catch (e) {
+        console.warn(`[MOBCOINS] Erro ao buscar saldo do plugin: ${e.message}`);
+    }
+
+    // Fallback se o plugin não responder
+    res.json({ player: playerName, balance: 0, message: 'Plugin indisponível' });
 });
 
 // ─── API: Buy with MobCoins ─────────────────────────────────────────────────

@@ -405,18 +405,6 @@ app.post('/api/cancel/:purchaseId', requireAdmin, (req, res) => {
     res.json({ status: 'cancelled', message: 'Compra cancelada com sucesso' });
 });
 
-// ─── API: MobCoins Balance ──────────────────────────────────────────────────
-// MobCoins balance is managed in-game via IridiumMobCoins plugin
-// The website cannot access the Minecraft server's database directly
-app.get('/api/mobcoins/:playerName', (req, res) => {
-    const { playerName } = req.params;
-    res.json({
-        player: playerName,
-        balance: 0,
-        message: 'Saldo verificado no jogo. Use /mobcoins no servidor.'
-    });
-});
-
 // ─── API: Buy with MobCoins ─────────────────────────────────────────────────
 app.post('/api/mobcoins/buy', purchaseLimiter, (req, res) => {
     const { playerName, itemId } = req.body;
@@ -453,6 +441,41 @@ app.get('/api/purchases/:playerName', (req, res) => {
     const pix = queryAll(storeDb, 'SELECT * FROM purchases WHERE player_name = ? ORDER BY created_at DESC LIMIT 20', [playerName]);
     const mobcoins = queryAll(storeDb, 'SELECT * FROM mobcoins_purchases WHERE player_name = ? ORDER BY created_at DESC LIMIT 20', [playerName]);
     res.json({ pix, mobcoins });
+});
+
+// ─── API: MobCoins Balance Sync (from plugin) ──────────────────────────────
+// Plugin pushes balance data here so frontend can query it
+app.post('/api/mobcoins/sync', requirePlugin, (req, res) => {
+    const { balances } = req.body;
+    if (!Array.isArray(balances)) {
+        return res.status(400).json({ error: 'balances array required' });
+    }
+
+    // Store balances in memory (simple cache)
+    if (!global.mobcoinsCache) global.mobcoinsCache = {};
+    for (const entry of balances) {
+        if (entry.name && typeof entry.balance === 'number') {
+            global.mobcoinsCache[entry.name.toLowerCase()] = {
+                balance: entry.balance,
+                updatedAt: Date.now()
+            };
+        }
+    }
+    console.log(`[MOBCOINS] Synced ${balances.length} player balances`);
+    res.json({ synced: balances.length });
+});
+
+// ─── API: Get MobCoins Balance (from cache) ────────────────────────────────
+app.get('/api/mobcoins/:playerName', (req, res) => {
+    const { playerName } = req.params;
+    const cache = global.mobcoinsCache || {};
+    const cached = cache[playerName.toLowerCase()];
+
+    if (cached && (Date.now() - cached.updatedAt) < 60000) { // 1 min cache
+        return res.json({ player: playerName, balance: cached.balance });
+    }
+
+    res.json({ player: playerName, balance: 0, message: 'Saldo verificado no jogo' });
 });
 
 // ─── API: Admin - All Purchases ─────────────────────────────────────────────

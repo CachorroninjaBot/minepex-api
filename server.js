@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -9,14 +10,20 @@ const qrcode = require('qrcode');
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-const PIX_KEY = '40b028d0-7ae8-4622-9f84-11cc4b2172e7';
+const PIX_KEY = process.env.PIX_KEY || '40b028d0-7ae8-4622-9f84-11cc4b2172e7';
 const STORE_DB_PATH = path.join(__dirname, 'store.db');
 const SERVER_IP = 'play.minepex.com';
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://site-minepex.vercel.app';
+const ADMIN_KEY = process.env.ADMIN_KEY || 'minepex2026';
+const PLUGIN_SECRET = process.env.PLUGIN_SECRET || 'minepex-plugin-secret';
 
 // ─── Security ───────────────────────────────────────────────────────────────
 function sanitize(str) {
-    return String(str).replace(/[^a-zA-Z0-9_]/g, '').substring(0, 16);
+    return String(str || '').replace(/[^a-zA-Z0-9_]/g, '').substring(0, 16);
+}
+
+function validateUUID(str) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
 const purchaseLimiter = rateLimit({
@@ -26,6 +33,24 @@ const purchaseLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+// Admin authentication middleware
+function requireAdmin(req, res, next) {
+    const key = req.headers['x-admin-key'] || req.query.key;
+    if (key !== ADMIN_KEY) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+    next();
+}
+
+// Plugin authentication middleware
+function requirePlugin(req, res, next) {
+    const secret = req.headers['x-plugin-secret'];
+    if (secret !== PLUGIN_SECRET) {
+        return res.status(401).json({ error: 'Não autorizado' });
+    }
+    next();
+}
 
 // ─── Database ───────────────────────────────────────────────────────────────
 let storeDb = null;
@@ -70,15 +95,34 @@ async function initDatabase() {
             delivered_at INTEGER
         )
     `);
+    // Add indexes for performance
+    storeDb.run('CREATE INDEX IF NOT EXISTS idx_purchases_status ON purchases(status)');
+    storeDb.run('CREATE INDEX IF NOT EXISTS idx_purchases_player ON purchases(player_name)');
+    storeDb.run('CREATE INDEX IF NOT EXISTS idx_purchases_created ON purchases(created_at)');
+    storeDb.run('CREATE INDEX IF NOT EXISTS idx_mc_purchases_status ON mobcoins_purchases(status)');
+    storeDb.run('CREATE INDEX IF NOT EXISTS idx_mc_purchases_player ON mobcoins_purchases(player_name)');
+
     saveDb();
-    console.log('[DB] Database initialized.');
+    console.log('[DB] Database initialized with indexes.');
 }
 
+// Batched async save to avoid blocking event loop
+let saveTimeout = null;
 function saveDb() {
-    if (storeDb) {
-        const data = storeDb.export();
-        fs.writeFileSync(STORE_DB_PATH, Buffer.from(data));
-    }
+    if (saveTimeout) return; // Already scheduled
+    saveTimeout = setTimeout(() => {
+        saveTimeout = null;
+        if (storeDb) {
+            try {
+                const data = storeDb.export();
+                fs.writeFile(STORE_DB_PATH, Buffer.from(data), (err) => {
+                    if (err) console.error('[DB] Save error:', err.message);
+                });
+            } catch (e) {
+                console.error('[DB] Export error:', e.message);
+            }
+        }
+    }, 1000); // Batch saves to max once per second
 }
 
 function queryAll(db, sql, params = []) {
@@ -156,13 +200,30 @@ function crc16CCITT(str) {
 // ─── Express App ────────────────────────────────────────────────────────────
 const app = express();
 app.set('trust proxy', 1);
-app.use(cors({ origin: [ALLOWED_ORIGIN], methods: ['GET', 'POST'], credentials: false }));
-app.use(express.json());
+app.disable('x-powered-by');
 
+// Security middleware
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+}));
+app.use(cors({
+    origin: [ALLOWED_ORIGIN],
+    methods: ['GET', 'POST'],
+    credentials: false,
+    maxAge: 86400 // Cache preflight for 24h
+}));
+app.use(express.json({ limit: '10kb' }));
+
+// Request logging
 app.use((req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (!req.path.startsWith('/api/health')) {
+            console.log(`[${req.method}] ${req.path} ${res.statusCode} ${duration}ms`);
+        }
+    });
     next();
 });
 
@@ -256,7 +317,7 @@ app.get('/api/pix/status/:purchaseId', (req, res) => {
 });
 
 // ─── API: Pending Purchases (for Minecraft plugin polling) ──────────────────
-app.get('/api/pending', (req, res) => {
+app.get('/api/pending', requirePlugin, (req, res) => {
     const pixPending = queryAll(storeDb, "SELECT * FROM purchases WHERE status = 'paid' ORDER BY created_at ASC LIMIT 10");
     const mcPending = queryAll(storeDb, "SELECT * FROM mobcoins_purchases WHERE status = 'pending' ORDER BY created_at ASC LIMIT 10");
 
@@ -274,7 +335,7 @@ app.get('/api/pending', (req, res) => {
 });
 
 // ─── API: Mark as Delivered ─────────────────────────────────────────────────
-app.post('/api/delivered/:purchaseId', (req, res) => {
+app.post('/api/delivered/:purchaseId', requirePlugin, (req, res) => {
     const { purchaseId } = req.params;
     const { type } = req.body;
     console.log(`[DELIVERED] Marcando como entregue: id=${purchaseId}, type=${type}`);
@@ -290,7 +351,7 @@ app.post('/api/delivered/:purchaseId', (req, res) => {
 });
 
 // ─── API: Confirm PIX ───────────────────────────────────────────────────────
-app.post('/api/pix/confirm/:purchaseId', (req, res) => {
+app.post('/api/pix/confirm/:purchaseId', requireAdmin, (req, res) => {
     const { purchaseId } = req.params;
     console.log(`[CONFIRM] Confirmando pagamento: id=${purchaseId}`);
     const purchase = queryOne(storeDb, 'SELECT * FROM purchases WHERE id = ?', [purchaseId]);
@@ -314,7 +375,7 @@ app.post('/api/pix/confirm/:purchaseId', (req, res) => {
 });
 
 // ─── API: Cancel Purchase ──────────────────────────────────────────────────
-app.post('/api/cancel/:purchaseId', (req, res) => {
+app.post('/api/cancel/:purchaseId', requireAdmin, (req, res) => {
     const { purchaseId } = req.params;
     const { type, reason } = req.body;
     console.log(`[CANCEL] Cancelando compra: id=${purchaseId}, type=${type}, reason=${reason}`);
@@ -408,7 +469,7 @@ app.get('/api/purchases/:playerName', (req, res) => {
 });
 
 // ─── API: Admin - All Purchases ─────────────────────────────────────────────
-app.get('/api/admin/purchases', (req, res) => {
+app.get('/api/admin/purchases', requireAdmin, (req, res) => {
     const pixPurchases = queryAll(storeDb, 'SELECT *, \'pix\' as type FROM purchases ORDER BY created_at DESC LIMIT 100');
     const mcPurchases = queryAll(storeDb, 'SELECT *, \'mobcoins\' as type FROM mobcoins_purchases ORDER BY created_at DESC LIMIT 100');
 
@@ -421,14 +482,38 @@ app.get('/api/admin/purchases', (req, res) => {
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 
+// ─── Global Error Handler ──────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+    console.error('[ERROR]', err.stack || err.message);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+});
+
+// ─── Graceful Shutdown ─────────────────────────────────────────────────────
+function gracefulShutdown(signal) {
+    console.log(`\n[${signal}] Desligando graciosamente...`);
+    // Force save database
+    if (storeDb) {
+        try {
+            const data = storeDb.export();
+            fs.writeFileSync(STORE_DB_PATH, Buffer.from(data));
+            console.log('[DB] Database saved.');
+        } catch (e) {
+            console.error('[DB] Error saving:', e.message);
+        }
+    }
+    process.exit(0);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 // ─── Start ──────────────────────────────────────────────────────────────────
 initDatabase().then(() => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`
 ╔══════════════════════════════════════════════════╗
 ║  Minepex Legends - Store API                     ║
 ║  Port: ${PORT}                                    ║
-║  PIX Key: ${PIX_KEY.substring(0, 20)}...    ║
 ╚══════════════════════════════════════════════════╝
         `);
     });

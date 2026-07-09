@@ -489,6 +489,136 @@ app.get('/api/admin/purchases', requireAdmin, (req, res) => {
     res.json({ purchases: allPurchases, count: allPurchases.length });
 });
 
+// ─── Auth: Discord OAuth2 + sessão (login no site) ───────────────────────────
+// Fluxo: site → /api/auth/discord → Discord → /api/auth/discord/callback
+//        → API troca code por token → pega discord_id → consulta o PLUGIN
+//        (que tem discord_links) → descobre uuid/mcName do Minecraft
+//        → cria sessão assinada (cookie) já com o MC verificado.
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || 'https://minepex-api.onrender.com/api/auth/discord/callback';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'minepex-session-secret-change-me';
+const PLUGIN_LINK_URL = process.env.PLUGIN_LINK_URL || ''; // ex: http://IP-DO-VPS:8081
+const DISCORD_API = 'https://discord.com/api';
+
+function signSession(payload) {
+    const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = crypto.createHmac('sha256', SESSION_SECRET).update(data).digest('base64url');
+    return `${data}.${sig}`;
+}
+function verifySession(token) {
+    try {
+        const [data, sig] = token.split('.');
+        const expected = crypto.createHmac('sha256', SESSION_SECRET).update(data).digest('base64url');
+        if (sig !== expected) return null;
+        return JSON.parse(Buffer.from(data, 'base64url').toString('utf-8'));
+    } catch { return null; }
+}
+
+// Lê o cookie de sessão (sem libs externas)
+function getSession(req) {
+    const raw = req.headers.cookie || '';
+    const m = raw.match(/(?:^|;\s*)mpx_session=([^;]+)/);
+    if (!m) return null;
+    return verifySession(decodeURIComponent(m[1]));
+}
+
+// Consulta o plugin: dado um discord_id, retorna { uuid, mcName } se vinculado
+async function lookupMinecraft(discordId) {
+    if (!PLUGIN_LINK_URL) return null;
+    try {
+        const r = await fetch(`${PLUGIN_LINK_URL.replace(/\/$/, '')}/link/discord/${discordId}`, {
+            headers: { 'X-Plugin-Secret': PLUGIN_SECRET }
+        });
+        if (!r.ok) return null;
+        const data = await r.json();
+        if (data && data.linked) return { uuid: data.uuid || null, mcName: data.mcName || null };
+        return null;
+    } catch (e) {
+        console.warn('[AUTH] Plugin link lookup falhou:', e.message);
+        return null;
+    }
+}
+
+app.get('/api/auth/discord', (req, res) => {
+    if (!DISCORD_CLIENT_ID) return res.status(500).json({ error: 'Discord OAuth não configurado' });
+    const params = new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID,
+        redirect_uri: DISCORD_REDIRECT_URI,
+        response_type: 'code',
+        scope: 'identify',
+    });
+    res.redirect(`https://discord.com/oauth2/authorize?${params}`);
+});
+
+app.get('/api/auth/discord/callback', async (req, res) => {
+    const { code } = req.query;
+    if (!code) return res.redirect(`${ALLOWED_ORIGIN}/?auth=error`);
+
+    try {
+        // 1) Troca o code por access token
+        const tokenRes = await fetch(`${DISCORD_API}/oauth2/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: DISCORD_CLIENT_ID,
+                client_secret: DISCORD_CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: DISCORD_REDIRECT_URI,
+            }),
+        });
+        if (!tokenRes.ok) throw new Error('token exchange failed');
+        const token = await tokenRes.json();
+
+        // 2) Pega os dados do usuário no Discord
+        const userRes = await fetch(`${DISCORD_API}/users/@me`, {
+            headers: { Authorization: `Bearer ${token.access_token}` },
+        });
+        const user = await userRes.json();
+        const discordId = user.id;
+        const discordName = user.global_name || user.username;
+        const discordAvatar = user.avatar
+            ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
+            : null;
+
+        // 3) Descobre o Minecraft vinculado (consulta o plugin)
+        const mc = await lookupMinecraft(discordId);
+
+        // 4) Cria sessão assinada
+        const session = signSession({
+            discordId, discordName, discordAvatar,
+            mcUuid: mc?.uuid || null,
+            mcName: mc?.mcName || null,
+            iat: Date.now(),
+        });
+
+        res.setHeader('Set-Cookie',
+            `mpx_session=${encodeURIComponent(session)}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
+        // Redireciona de volta ao site
+        res.redirect(`${ALLOWED_ORIGIN}/?auth=success${mc?.mcName ? '&mc=' + encodeURIComponent(mc.mcName) : ''}`);
+    } catch (e) {
+        console.error('[AUTH] Callback error:', e.message);
+        res.redirect(`${ALLOWED_ORIGIN}/?auth=error`);
+    }
+});
+
+// Estado da sessão atual (usado pelo frontend para saber quem logou)
+app.get('/api/auth/me', (req, res) => {
+    const s = getSession(req);
+    if (!s) return res.json({ loggedIn: false });
+    res.json({
+        loggedIn: true,
+        discord: { id: s.discordId, name: s.discordName, avatar: s.discordAvatar },
+        minecraft: s.mcName ? { name: s.mcName, uuid: s.mcUuid } : null,
+    });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    res.setHeader('Set-Cookie', 'mpx_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+    res.json({ loggedIn: false });
+});
+
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 

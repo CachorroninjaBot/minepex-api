@@ -405,29 +405,16 @@ app.post('/api/cancel/:purchaseId', requireAdmin, (req, res) => {
     res.json({ status: 'cancelled', message: 'Compra cancelada com sucesso' });
 });
 
-// ─── API: MobCoins Balance (proxy to plugin) ────────────────────────────────
-app.get('/api/mobcoins/:playerName', async (req, res) => {
+// ─── API: MobCoins Balance ──────────────────────────────────────────────────
+// MobCoins balance is managed in-game via IridiumMobCoins plugin
+// The website cannot access the Minecraft server's database directly
+app.get('/api/mobcoins/:playerName', (req, res) => {
     const { playerName } = req.params;
-    const pluginUrl = process.env.PLUGIN_API_URL || 'http://minepex.minehost.com.br:8081';
-
-    try {
-        const response = await fetch(`${pluginUrl}/api/mobcoins/${encodeURIComponent(playerName)}`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(5000)
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`[MOBCOINS] Saldo de ${playerName}: ${data.balance}`);
-            return res.json(data);
-        }
-    } catch (e) {
-        console.warn(`[MOBCOINS] Erro ao buscar saldo do plugin: ${e.message}`);
-    }
-
-    // Fallback se o plugin não responder
-    res.json({ player: playerName, balance: 0, message: 'Plugin indisponível' });
+    res.json({
+        player: playerName,
+        balance: 0,
+        message: 'Saldo verificado no jogo. Use /mobcoins no servidor.'
+    });
 });
 
 // ─── API: Buy with MobCoins ─────────────────────────────────────────────────
